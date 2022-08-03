@@ -18,13 +18,13 @@ jobs:
     - uses: hashicorp/setup-terraform@v1
 
     - name: Initialize Terraform
-      run: terraform -chdir=terraform/test init
+      run: terraform -chdir=terraform init
 
     - name: Format Terraform
-      run: terraform fmt terraform/test/
+      run: terraform fmt terraform
 
     - name: Plan Terraform
-      run: terraform -chdir=terraform/test plan -out=planfile
+      run: terraform -chdir=terraform plan -out=planfile
    
     - name: Apply Terraform
-      run: terraform -chdir=terraform/test apply --auto-approve planfile
+      run: terraform -chdir=terraform apply --auto-approve planfile
