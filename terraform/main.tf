@@ -30,7 +30,7 @@ resource "aws_dynamodb_table" "user_data" {
 // PUT
 resource "aws_iam_role" "lambda_put_role" {
   name = "lambda_put_role"
-  assume_role_policy = file("assume_role_policy.json")
+  assume_role_policy = file("policies/assume_role_policy.json")
 }
 resource "aws_iam_role_policy" "put_lambda_policy" {
   name = "lambda_policy"
@@ -54,7 +54,7 @@ resource "aws_lambda_function" "put_lambda" {
 // Delete
 resource "aws_iam_role" "lambda_delete_role" {
   name = "lambda_delete_role"
-  assume_role_policy = file("assume_role_policy.json")
+  assume_role_policy = file("policies/assume_role_policy.json")
 }
 
 resource "aws_iam_role_policy" "delete_lambda_policy" {
@@ -76,4 +76,87 @@ resource "aws_lambda_function" "delete_lambda" {
   handler       = "index.handler"
   runtime       = "nodejs16.x"
   source_code_hash = filebase64sha256(data.archive_file.delete_lambda_zip.output_path)
+}
+
+// API Gateway
+
+// General Config
+resource "aws_api_gateway_rest_api" "dynamo_data_routes" {
+  name = "CRUD Methods"
+  description = "Route for CRUD operations on DynamoDB data"
+}
+
+
+
+resource "aws_api_gateway_method" "put_proxy_root" {
+  rest_api_id = aws_api_gateway_rest_api.dynamo_data_routes.id
+  resource_id = aws_api_gateway_rest_api.dynamo_data_routes.root_resource_id
+  http_method = "PUT"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_method" "delete_proxy_root" {
+  rest_api_id = aws_api_gateway_rest_api.dynamo_data_routes.id
+  resource_id = aws_api_gateway_rest_api.dynamo_data_routes.root_resource_id
+  http_method = "DELETE"
+  authorization = "NONE"
+}
+
+
+resource "aws_api_gateway_integration" "put_lambda_root" {
+  rest_api_id = aws_api_gateway_rest_api.dynamo_data_routes.id
+  resource_id = aws_api_gateway_method.put_proxy_root.resource_id
+  http_method = aws_api_gateway_method.put_proxy_root.http_method
+  integration_http_method = "POST"
+  type = "AWS_PROXY"
+  uri = aws_lambda_function.put_lambda.invoke_arn
+}
+resource "aws_api_gateway_integration" "delete_lambda_root" {
+  rest_api_id = aws_api_gateway_rest_api.dynamo_data_routes.id
+  resource_id = aws_api_gateway_method.delete_proxy_root.resource_id
+  http_method = aws_api_gateway_method.delete_proxy_root.http_method
+  integration_http_method = "POST"
+  type = "AWS_PROXY"
+  uri = aws_lambda_function.delete_lambda.invoke_arn
+}
+
+
+
+resource "aws_api_gateway_deployment" "put-deployment" {
+  depends_on = [
+    aws_api_gateway_integration.put_lambda_root
+  ]
+  rest_api_id = aws_api_gateway_rest_api.dynamo_data_routes.id
+  stage_name = "test"
+}
+
+resource "aws_api_gateway_deployment" "delete-deployment" {
+  depends_on = [
+    aws_api_gateway_integration.delete_lambda_root
+  ]
+  rest_api_id = aws_api_gateway_rest_api.dynamo_data_routes.id
+  stage_name = "test"
+}
+
+
+
+// Permissions
+resource "aws_lambda_permission" "put_apigw" {
+  statement_id = "AllowAPIGatewayInvoke"
+  action = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.put_lambda.function_name
+  principal = "apigateway.amazonaws.com"
+  source_arn = "${aws_api_gateway_rest_api.dynamo_data_routes.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "delete_apigw" {
+  statement_id = "AllowAPIGatewayInvoke"
+  action = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.delete_lambda.function_name
+  principal = "apigateway.amazonaws.com"
+  source_arn = "${aws_api_gateway_rest_api.dynamo_data_routes.execution_arn}/*/*"
+}
+
+output "base_url" {
+  value = aws_api_gateway_deployment.delete-deployment.invoke_url
 }

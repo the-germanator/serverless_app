@@ -5,24 +5,26 @@ AWS.config.update({region: 'us-east-1'});
 exports.handler = async (event) => {
     var ddb = new AWS.DynamoDB();
     let response
-    if(!event || !event.body || !event.body.userID || !event.body.firstName || !event.body.lastName) {
+    try {
+      let eventObj = JSON.parse(event.body)
+      var params = {
+        TableName: 'user-data',
+        Item: {
+          'userID': { S: eventObj.userID},
+          'userData' : {M: {
+              'firstName': {S: eventObj.firstName},
+              'lastName': {S: eventObj.lastName}
+          }}
+        }
+      };
+    } catch(err) {
       response = {
         statusCode: 500,
-          body: JSON.stringify("Insufficient Data Provided"),
+          body: JSON.stringify("Bad / Incomplete Data Provided"),
       }
       return response
     }
-    var params = {
-      TableName: 'user-data',
-      Item: {
-        'userID': { S: event.body.userID || '' },
-        'userData' : {M: {
-            'firstName': {S: event.body.firstName || '' },
-            'lastName': {S: event.body.lastName || '' }
-        }}
-      }
-    };
-    
+
     try {
         const data = await ddb.putItem(params).promise();
         response = {
