@@ -1,4 +1,9 @@
 #!/bin/bash
 URL=https://4h7szpp6dg.execute-api.us-east-1.amazonaws.com/test
 
-curl -X PUT -d '{"userID": "test123456","firstName": "ABC", "lastName": "DEF"}' $URL
+
+curl $URL?userID=hello_world_userID
+curl -X PUT -d '{"userID": "hello_world_userID","firstName": "Hello", "lastName": "World"}' $URL
+curl $URL?userID=hello_world_userID
+curl -X DELETE -d '{"userID": "hello_world_userID"}' $URL
+curl $URL?userID=hello_world_userID

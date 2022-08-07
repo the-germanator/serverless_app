@@ -165,25 +165,34 @@ resource "aws_api_gateway_integration" "get_lambda_root" {
 
 
 resource "aws_api_gateway_deployment" "put-deployment" {
-  depends_on = [
-    aws_api_gateway_integration.put_lambda_root
-  ]
+  triggers = {
+    redeployment = sha1(jsonencode([
+      aws_api_gateway_method.put_proxy_root,
+      aws_api_gateway_integration.put_lambda_root,
+    ]))
+  }
   rest_api_id = aws_api_gateway_rest_api.dynamo_data_routes.id
   stage_name = "test"
 }
 
 resource "aws_api_gateway_deployment" "delete-deployment" {
-  depends_on = [
-    aws_api_gateway_integration.delete_lambda_root
-  ]
+  triggers = {
+    redeployment = sha1(jsonencode([
+      aws_api_gateway_method.delete_proxy_root,
+      aws_api_gateway_integration.delete_lambda_root,
+    ]))
+  }
   rest_api_id = aws_api_gateway_rest_api.dynamo_data_routes.id
   stage_name = "test"
 }
 
 resource "aws_api_gateway_deployment" "get-deployment" {
-  depends_on = [
-    aws_api_gateway_integration.get_lambda_root
-  ]
+  triggers = {
+    redeployment = sha1(jsonencode([
+      aws_api_gateway_method.get_proxy_root,
+      aws_api_gateway_integration.get_lambda_root,
+    ]))
+  }
   rest_api_id = aws_api_gateway_rest_api.dynamo_data_routes.id
   stage_name = "test"
 }
